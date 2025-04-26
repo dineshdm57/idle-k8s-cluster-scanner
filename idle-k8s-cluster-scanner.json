@@ -1,0 +1,233 @@
+{
+  "created": "1745646654991",
+  "updated": "1745646654991",
+  "name": "idle-k8s-cluster-scanner",
+  "tags": [],
+  "services": [],
+  "domains": [],
+  "template": {
+    "displayName": "idle-k8s-cluster-scanner",
+    "trigger": {
+      "name": "trigger",
+      "valid": true,
+      "displayName": "Every Week",
+      "type": "TRIGGER",
+      "settings": {
+        "blockName": "@openops/block-schedule",
+        "blockVersion": "~0.1.5",
+        "blockType": "OFFICIAL",
+        "packageType": "REGISTRY",
+        "input": {
+          "timezone": "UTC",
+          "day_of_the_week": 1,
+          "hour_of_the_day": 9
+        },
+        "inputUiInfo": {
+          "customizedInputs": {}
+        },
+        "triggerName": "every_week"
+      },
+      "nextAction": {
+        "name": "step_1",
+        "type": "BLOCK",
+        "valid": false,
+        "settings": {
+          "input": {
+            "url": "https://monitoring.googleapis.com/v3/projects/YOUR_PROJECT_ID/timeSeries?filter=metric.type=\"kubernetes.io/container/cpu/usage_time\"&interval.startTime=...",
+            "body": {},
+            "method": null,
+            "headers": {},
+            "timeout": null,
+            "failsafe": false,
+            "body_type": "none",
+            "use_proxy": false,
+            "queryParams": {},
+            "proxy_settings": {}
+          },
+          "blockName": "@openops/block-http",
+          "blockType": "OFFICIAL",
+          "actionName": "send_request",
+          "inputUiInfo": {
+            "customizedInputs": {}
+          },
+          "packageType": "REGISTRY",
+          "blockVersion": "~0.5.1",
+          "errorHandlingOptions": {
+            "retryOnFailure": {
+              "value": false
+            },
+            "continueOnFailure": {
+              "value": false
+            }
+          }
+        },
+        "nextAction": {
+          "name": "step_2",
+          "type": "LOOP_ON_ITEMS",
+          "valid": true,
+          "settings": {
+            "items": "step2.clusters",
+            "inputUiInfo": {
+              "customizedInputs": {}
+            }
+          },
+          "nextAction": {
+            "name": "step_7",
+            "type": "BLOCK",
+            "valid": true,
+            "settings": {
+              "input": {},
+              "blockName": "@openops/block-end-flow",
+              "blockType": "OFFICIAL",
+              "actionName": "end_workflow",
+              "inputUiInfo": {
+                "customizedInputs": {}
+              },
+              "packageType": "REGISTRY",
+              "blockVersion": "~0.0.1",
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "displayName": "End Workflow"
+          },
+          "displayName": "Loop on Items",
+          "firstLoopAction": {
+            "name": "step_3",
+            "type": "BLOCK",
+            "valid": true,
+            "settings": {
+              "input": {
+                "url": "https://monitoring.amazonaws.com/...?cluster={{item.name}}&metric=CPUUtilization",
+                "body": {},
+                "method": "GET",
+                "headers": {},
+                "timeout": null,
+                "failsafe": false,
+                "body_type": "none",
+                "use_proxy": false,
+                "queryParams": {},
+                "proxy_settings": {}
+              },
+              "blockName": "@openops/block-http",
+              "blockType": "OFFICIAL",
+              "actionName": "send_request",
+              "inputUiInfo": {
+                "customizedInputs": {}
+              },
+              "packageType": "REGISTRY",
+              "blockVersion": "~0.5.1",
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "nextAction": {
+              "name": "step_4",
+              "type": "BRANCH",
+              "valid": true,
+              "settings": {
+                "conditions": [
+                  [
+                    {
+                      "operator": "NUMBER_IS_LESS_THAN",
+                      "firstValue": "{{Step4.output.utilization}}",
+                      "secondValue": "10"
+                    }
+                  ]
+                ],
+                "inputUiInfo": {
+                  "customizedInputs": {}
+                }
+              },
+              "displayName": "Condition",
+              "onFailureAction": {
+                "name": "step_6",
+                "type": "BLOCK",
+                "valid": true,
+                "settings": {
+                  "input": {},
+                  "blockName": "@openops/block-end-flow",
+                  "blockType": "OFFICIAL",
+                  "actionName": "end_workflow",
+                  "inputUiInfo": {
+                    "customizedInputs": {}
+                  },
+                  "packageType": "REGISTRY",
+                  "blockVersion": "~0.0.1",
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "displayName": "End Workflow"
+              },
+              "onSuccessAction": {
+                "name": "step_5",
+                "type": "BLOCK",
+                "valid": false,
+                "settings": {
+                  "input": {
+                    "auth": null,
+                    "file": null,
+                    "text": {
+                      "text": "Idle K8s Cluster Detected: {{item.clusterName}} — Utilization: {{item.utilization}}%"
+                    },
+                    "blocks": {},
+                    "threadTs": null,
+                    "username": null,
+                    "headerText": {
+                      "headerText": null
+                    },
+                    "conversationId": null,
+                    "blockKitEnabled": false
+                  },
+                  "blockName": "@openops/block-slack",
+                  "blockType": "OFFICIAL",
+                  "actionName": "send_slack_message",
+                  "inputUiInfo": {
+                    "customizedInputs": {}
+                  },
+                  "packageType": "REGISTRY",
+                  "blockVersion": "~0.5.2",
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "displayName": "Send Message"
+              }
+            },
+            "displayName": "Get Cluster Utilization"
+          }
+        },
+        "displayName": "Get Cluster Utilization"
+      }
+    },
+    "valid": false,
+    "description": ""
+  },
+  "blocks": [
+    "@openops/block-schedule",
+    "@openops/block-http",
+    "@openops/block-slack",
+    "@openops/block-end-flow"
+  ]
+}
